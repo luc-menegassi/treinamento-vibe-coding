@@ -190,6 +190,166 @@ construir o próprio site deste treinamento.
 
 ---
 
+## 0.8 — Missão real: quando o `push` simplesmente não autentica
+
+Esta seção não é hipotética — é o registro de um problema real que aconteceu
+durante a produção deste próprio treinamento, na hora de subir os primeiros
+módulos pro GitHub. Vale a pena estudar com calma porque combina três coisas
+que você vai encontrar de novo, em combinações diferentes, pelo resto da sua
+vida como programador: **autenticação**, **segurança de credenciais**, e
+**debug em camadas** (o mesmo espírito do Módulo 3, só que aplicado ao
+ambiente, não ao código).
+
+### Situação
+
+Depois de configurar tudo (Git instalado, `user.name`/`user.email`
+definidos), veio a hora de dar o primeiro `git push` de verdade, subindo os
+módulos do treinamento pro repositório remoto. O comando falhou:
+
+```
+remote: Invalid username or token. Password authentication is not supported for Git operations.
+fatal: Authentication failed for 'https://github.com/...'
+```
+
+### Causa raiz nº 1 — GitHub não aceita mais usuário/senha
+
+Desde 2021, o GitHub não aceita mais autenticação por senha comum em
+operações de linha de comando (`push`, `pull`, `clone` via HTTPS). É
+obrigatório usar um **Personal Access Token (PAT)** no lugar da senha, ou
+configurar autenticação via **SSH**.
+
+**Como gerar um token**: GitHub → foto de perfil → Settings → Developer
+settings → Personal access tokens → Tokens (classic) → Generate new token
+(classic). Marque a permissão `repo` (acesso completo a repositórios), e
+escolha um prazo de expiração — para um projeto de estudo, vale escolher um
+prazo mais longo, pra não precisar regenerar toda hora.
+
+### Um desvio no caminho — erro de sintaxe do `git config`
+
+No meio do processo, surgiu esta tentativa:
+
+```bash
+git config --global luc-menegassi "Luciano"
+```
+
+```
+error: key does not contain a section: luc-menegassi
+```
+
+O comando estava incompleto: `git config --global` espera uma chave no
+formato `secao.chave` (como `user.name`), não um nome solto. O comando certo
+já tinha sido usado no início deste módulo:
+
+```bash
+git config --global user.name "Luciano"
+```
+
+**Lição**: um erro de sintaxe do Git costuma vir com uma mensagem que
+explica exatamente o que falta (`key does not contain a section` = "faltou
+a seção da chave") — vale ler a mensagem de erro completa antes de assumir
+que é um problema maior do que realmente é.
+
+### Causa raiz nº 2 — um erro de segurança real, ao vivo
+
+Depois de gerar o token, a primeira tentativa de usá-lo foi colando o valor
+completo **direto no chat com o Claude**, pedindo ajuda. Isso é uma falha de
+segurança real, não hipotética: **qualquer token, senha ou chave de API deixa
+de ser confiável no instante em que é digitado em qualquer lugar que não seja
+o prompt interativo da própria ferramenta que está pedindo** — um terminal,
+um campo de senha. Isso inclui chats, arquivos de anotação, mensagens, e
+principalmente qualquer coisa que fique salva (como o histórico desta
+conversa).
+
+**A ação correta, tomada nesse caso real**: revogar o token imediatamente no
+GitHub (Settings → Developer settings → Personal access tokens → Delete) e
+gerar um novo. Um token exposto deve ser tratado como comprometido mesmo que
+não haja evidência de uso indevido — a suposição segura é sempre "alguém
+mais pode ter visto isso".
+
+> ⚠️ **Regra permanente para todo este treinamento**: nunca cole tokens,
+> senhas ou chaves de API no chat, em nenhuma situação, mesmo pedindo ajuda
+> para debugar. Se uma ferramenta pede uma credencial, ela deve ser digitada
+> **somente** no prompt interativo dela — nunca escrita por extenso dentro
+> de um comando, nunca compartilhada para diagnóstico.
+
+### Causa raiz nº 3 — autenticação falhando *sem nem perguntar*
+
+Depois de gerar o token novo (com a permissão `repo` corretamente marcada) e
+configurar `git config --global credential.helper store` (para não precisar
+colar o token a cada push), o `git push` continuou falhando — só que dessa
+vez de um jeito mais estranho: **o terminal nem chegava a perguntar usuário
+e senha**, ia direto pro erro.
+
+Isso é um sintoma de debug em camadas (Módulo 3): um erro pode continuar
+aparecendo depois de uma correção real, porque a causa mudou. A investigação
+seguiu um checklist de eliminação, cada item descartando uma hipótese:
+
+| Hipótese testada | Comando | Resultado |
+|---|---|---|
+| Existe um helper de sistema (`libsecret`) competindo com o `store`? | `cat /etc/gitconfig \| grep credential` | Não — nada configurado |
+| Existe uma credencial antiga salva, incorreta, em `~/.git-credentials`? | `ls -la ~/.git-credentials` | Arquivo existia, mas vazio (0 bytes) |
+| Existe um `~/.netrc` com credencial antiga (usado pelo `curl`, por baixo do Git)? | `ls -la ~/.netrc` | Não existia |
+| Existe uma reescrita de URL ou config local estranha no repositório? | `git config --list --show-origin \| grep -i url` | Não — só a URL correta |
+| Existe alguma variável de ambiente interceptando a autenticação? | `env \| grep -i -E 'git\|github\|askpass'` | **Sim**: `SSH_ASKPASS=/usr/bin/ksshaskpass` |
+
+A causa real: `SSH_ASKPASS` é uma variável que diz ao Git (e a outras
+ferramentas) para pedir credenciais através de uma **janela gráfica
+separada**, em vez de perguntar no próprio terminal. Quando o terminal usado
+não tem uma forma confiável de abrir/mostrar essa janela, o programa
+(`ksshaskpass`, nesse caso) falha silenciosamente, e o Git acaba enviando uma
+credencial vazia para o GitHub — que rejeita na hora, sem nenhum prompt
+visível no terminal.
+
+### A correção
+
+```bash
+env -u SSH_ASKPASS git push
+```
+
+Esse comando roda o `git push` removendo a variável `SSH_ASKPASS` só para
+essa execução (sem alterar nada permanentemente no sistema). Com isso, o
+Git foi obrigado a perguntar usuário e senha **direto no terminal**:
+
+```
+Username for 'https://github.com': luc-menegassi
+Password for 'https://luc-menegassi@github.com':
+Everything up-to-date
+```
+
+Como o `credential.helper=store` já estava configurado, essa autenticação
+bem-sucedida ficou salva — os próximos `git push` (já sem precisar do
+`env -u SSH_ASKPASS`) passaram a funcionar normalmente, sem pedir nada de
+novo.
+
+### Por que vale entender isso, mesmo funcionando agora
+
+Se um dia esse mesmo sintoma voltar a acontecer (push falhando sem nem
+perguntar credencial), o checklist da tabela acima é reaproveitável quase
+literalmente — é uma sequência de eliminação de hipóteses, da mais comum
+(helper de sistema) até a mais rara (variável de ambiente interceptando o
+prompt), sempre confirmando uma de cada vez antes de seguir pra próxima.
+
+### O que você deveria ter aprendido (Missão 0.8)
+
+- GitHub exige token (PAT) ou SSH para autenticação por linha de comando —
+  senha comum não funciona mais.
+- `git config --global <chave> <valor>` exige uma chave no formato
+  `secao.chave` — erros de sintaxe do Git costumam vir com uma mensagem que
+  já explica o que falta.
+- **Nunca** cole tokens, senhas ou chaves de API em um chat, mesmo pedindo
+  ajuda para debugar — se isso acontecer, revogue a credencial imediatamente
+  e gere uma nova, tratando-a como comprometida.
+- Quando uma autenticação falha sem nem chegar a pedir credencial, o
+  problema geralmente está fora do arquivo de configuração normal do Git —
+  vale checar, em ordem: helpers de sistema, arquivos de credencial
+  antigos/`.netrc`, configs locais do repositório, e variáveis de ambiente
+  (`SSH_ASKPASS`/`GIT_ASKPASS` são suspeitas comuns).
+- `env -u NOME_DA_VARIAVEL comando` roda um comando removendo uma variável de
+  ambiente só para aquela execução — útil para testar hipóteses sem alterar
+  nada permanentemente no sistema.
+
+---
+
 ## O que você deveria ter aprendido
 
 - Instalar e verificar Node.js e Git no Fedora usando `dnf`.
@@ -198,6 +358,10 @@ construir o próprio site deste treinamento.
 - Quando usar o chat do Claude versus o Cursor, dependendo do tipo de tarefa.
 - Criar, clonar e subir para um repositório do zero, sem depender do Claude
   para os comandos básicos.
+- Autenticar via token (PAT) em vez de senha, e nunca expor essa credencial
+  fora do prompt interativo da ferramenta que a pede.
+- Diagnosticar uma falha de autenticação "muda" (sem prompt) eliminando
+  hipóteses em ordem — de configs de Git até variáveis de ambiente.
 
 **Próximo módulo**: Módulo 1 — Antes de programar, decida (quando vale a pena
 pedir uma análise de trade-off antes de pedir implementação).
