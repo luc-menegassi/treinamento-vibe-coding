@@ -190,3 +190,81 @@ abstratas — é isso que torna esse curso diferente de qualquer curso genérico
 Com esse mapa, dá pra montar a **Etapa 2 (Arquitetura do treinamento)**: agrupar
 as 10 linhas da tabela-síntese em módulos progressivos, decidir a ordem, e só
 então (Etapa 4) escrever o conteúdo de cada missão em detalhe.
+
+---
+
+## Atualização — Identidade metodológica e roadmap completo
+
+Depois que os Módulos 0-5 estavam prontos e o Módulo 6 (construção do site do
+treinamento) já em andamento, uma revisão externa do treinamento propôs uma
+identidade metodológica e um roadmap estendido. As partes adotadas, decididas
+em conversa:
+
+### O Loop do Vibe Coding
+
+Identidade conceitual do treinamento a partir de agora — aparece na
+introdução/README, contextualizando por que os módulos seguem essa sequência.
+Os Módulos 0-5 (Controlar) já ensinam partes desse ciclo implicitamente; os
+módulos futuros (Construir e Engenharia) o tornam explícito:
+
+```
+ENTENDER → DECIDIR → PLANEJAR → IMPLEMENTAR → TESTAR → REVISAR → COMMIT → PUBLICAR → (volta pro ENTENDER)
+```
+
+### Template de missão — mantido sem alteração
+
+Uma revisão externa sugeriu substituir o template atual por quatro perguntas
+fixas (Antes/Prompt/Evidência/Recuperação) em cada missão. Decisão: **não
+adotar** — o template atual (Situação → Prompt ruim → Prompt bom → Prática →
+Checkpoint → Aprendizado) já funciona bem nos Módulos 0-5, e trocar de
+estrutura sem evidência concreta de que melhora a missão contrariaria a
+própria lição do Módulo 1 (decidir com critério, não por impressão). Mantido
+para os módulos futuros também, por consistência.
+
+### Correção pendente no Módulo 0
+
+O caso real de autenticação (seção 0.8) usa `credential.helper store` como
+parte da solução. Uma revisão externa apontou, corretamente, que isso deveria
+ser apresentado como "foi assim que resolvemos naquele momento", não como
+prática recomendada — e mencionar SSH/GitHub CLI/credential manager como
+alternativas mais seguras para projetos novos. Correção pendente de aplicação
+no arquivo do módulo.
+
+### Roadmap completo renumerado
+
+O Módulo 6 (construção do site do treinamento) já existia como projeto em
+andamento quando essa revisão externa propôs uma numeração própria — por isso
+o roadmap abaixo foi renumerado para não colidir:
+
+| # | Módulo | Competência |
+|---|---|---|
+| 0-5 | Ambiente, decisão antes de implementar, entregas, debug em camadas, confiança calibrada, diagnóstico de Git | **Controlar** |
+| 6 | Construção do site do treinamento (projeto prático) | Controlar → Construir |
+| 7 | Contexto e exploração do projeto (entender antes de pedir código) | Construir |
+| 8 | Especificação (prompt ≠ especificação) | Construir |
+| 9 | Planejamento (arquivos afetados, riscos, ordem, antes do "implemente") | Construir |
+| 10 | Implementação com IA (conduzir sem perder o controle) | Construir |
+| 11 | Testes e validação ("a IA dizer que funciona não é evidência") | Construir |
+| 12 | Code Review com IA (IA gera → humano verifica → IA revisa → humano decide) | Construir |
+| 13 | Segurança | Engenharia |
+| 14 | Git como mecanismo de segurança | Engenharia |
+| 15 | CI/CD e Deploy | Engenharia |
+| 16 | Arquitetura e manutenção | Engenharia |
+
+**Fora do escopo por completo** (não "deprioritizado", removido do roadmap):
+Agentes, Contexto persistente/AGENTS.md, MCP, multi-agente, automação
+avançada. Não é o objetivo declarado do treinamento ("otimizar o uso do
+Claude", com redução de dependência como pano de fundo) — pode ser
+reconsiderado no futuro apenas se um caso real justificar.
+
+**Decisão sobre ancoragem em casos reais (Módulos 7-16)**: diferente dos
+Módulos 0-5 (100% extraídos de casos reais do PyForge/curso de Linux), os
+módulos de Construir e Engenharia serão conteúdo metodológico não
+necessariamente ancorado em um caso real pré-existente — decisão consciente
+("Opção B"), já que não há casos reais equivalentes disponíveis para toda essa
+metodologia. Onde possível, o próprio desenvolvimento do site do treinamento
+(Módulo 6 em diante) deve alimentar exemplos reais para esses módulos.
+
+**Fora do escopo por enquanto**: Contexto persistente/AGENTS.md, MCP,
+multi-agente, automação avançada — não descartados, só não priorizados; podem
+voltar ao roadmap se um caso real justificar.

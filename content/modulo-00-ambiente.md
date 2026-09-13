@@ -321,6 +321,21 @@ bem-sucedida ficou salva — os próximos `git push` (já sem precisar do
 `env -u SSH_ASKPASS`) passaram a funcionar normalmente, sem pedir nada de
 novo.
 
+> ⚠️ **Ressalva importante**: `credential.helper=store` resolveu o problema
+> **naquele momento**, mas não é a forma mais segura de guardar credenciais —
+> ele salva o token em texto puro num arquivo (`~/.git-credentials`). Para
+> projetos novos, prefira uma destas alternativas mais seguras:
+> - **SSH** (gerar um par de chaves e cadastrar a pública no GitHub — elimina
+>   token por completo nas operações de Git);
+> - **GitHub CLI** (`gh auth login`), que gerencia a autenticação de forma
+>   mais segura, sem guardar o token em texto puro;
+> - Um **gerenciador de credenciais nativo do sistema** (ex: `git-credential-manager`).
+>
+> O caso real documentado aqui usa `store` porque foi a solução mais rápida
+> disponível naquele momento de debug — não porque seja a prática recomendada
+> para todo projeto novo. Vale revisitar essa escolha quando o treinamento
+> chegar no módulo de Segurança.
+
 ### Por que vale entender isso, mesmo funcionando agora
 
 Se um dia esse mesmo sintoma voltar a acontecer (push falhando sem nem
@@ -347,6 +362,8 @@ prompt), sempre confirmando uma de cada vez antes de seguir pra próxima.
 - `env -u NOME_DA_VARIAVEL comando` roda um comando removendo uma variável de
   ambiente só para aquela execução — útil para testar hipóteses sem alterar
   nada permanentemente no sistema.
+- `credential.helper=store` funciona, mas guarda o token em texto puro —
+  para projetos novos, SSH ou GitHub CLI são alternativas mais seguras.
 
 ---
 
